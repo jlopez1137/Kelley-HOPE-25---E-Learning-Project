@@ -1,5 +1,5 @@
 import ollama
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
 import logging
 
@@ -29,7 +29,8 @@ class EmbeddingHandler:
             
             self.logger.info(f'Processing new chunk {i+1}/{total_chunks}')
             
-            response = ollama.embed(self.embedded_model, input = d)
+            model_name = self.embedded_model.model if hasattr(self.embedded_model, 'model') else str(self.embedded_model)
+            response = ollama.embed(model_name, input = d)
             embeddings = response['embeddings']
             doc = Document(
                 page_content = d,

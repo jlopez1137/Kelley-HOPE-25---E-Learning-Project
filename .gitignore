@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.pyc
+
+# ChromaDB vector store (regenerate with: python RAG/ingest.py)
+chroma_db/
+
+# Environment files
+.env

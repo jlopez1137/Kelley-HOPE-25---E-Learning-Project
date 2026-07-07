@@ -1,70 +1,44 @@
-# Getting Started with Create React App
+# Frontend — Prompt Engineering Tutor
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A Vite + React chat interface for the digital-human RAG backend. Students navigate a
+prompt-engineering course in the left sidebar; the chat answers as an encouraging
+tutor, grounded in the course PDF embedded in the backend's vector store.
 
-## Available Scripts
+## Prerequisites
 
-In the project directory, you can run:
+- Node.js ≥ 20.19 (installed via conda-forge on this machine — no sudo needed):
+  ```bash
+  conda install -n digital-human -c conda-forge "nodejs>=22"
+  ```
+- The Quart RAG backend running on port 5000 (see the root README).
 
-### `npm start`
+## Run
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```bash
+conda activate digital-human   # puts node/npm on PATH
+cd Frontend
+npm install
+npm run dev                    # http://localhost:5173
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Production build: `npm run build && npm run preview`.
 
-### `npm test`
+## Configuration
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+The backend URL comes from the `VITE_API_URL` env var (default `http://localhost:5000`).
+Copy `.env.example` to `.env` to override. No secrets are needed.
 
-### `npm run build`
+## Notes
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- **Latency**: the backend runs llama3.1:70b via Ollama — responses can take 30+
+  seconds. The UI shows a thinking indicator with an elapsed-time counter, and the
+  client timeout is 120 s (`TIMEOUT_MS` in `src/api.js`).
+- **Course structure** is hardcoded in `src/course.js` (4 modules of sections).
+  Clicking a section marks it complete, updates the progress bar, and auto-requests
+  a short intro from the tutor. Questions are sent with the current module/section
+  prepended as teaching context.
+- **Connection status** in the header polls the chat endpoint with an empty body
+  every 15 s (the backend has no health route; its cheap 400 path is used as a probe).
+- **Avatar**: not integrated yet. A future avatar component (HeyGen, or a local
+  LivePortrait/NVIDIA ACE video — see ../DISCOVERY.md) mounts as children of
+  `src/components/AvatarBanner.jsx` without any layout changes.

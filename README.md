@@ -2,90 +2,138 @@
 
 ## Overview
 
-This project is a Retrieval-Augmented Generation (RAG) system with a React-based frontend and a Python backend.
+This project is a Retrieval-Augmented Generation (RAG) e-learning system with a React frontend and a Python backend.
 
-* **Frontend**: Provides chat interface and HeyGen streaming avatar.
+* **Frontend**: Prompt-engineering course tutor — a course navigation sidebar plus a chat interface that answers as an encouraging teacher, grounded in the embedded course material.
 * **Backend**: Handles PDF ingestion, embedding, vector storage, LLM-based retrieval
+
+## Documentation
+
+* [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how everything fits together: data flow from browser to Ollama/ChromaDB, component map, API contract, config sources.
+* [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — symptom → fix for every failure we've hit (connection refused, empty vector store, wrong env, slow responses, …). **Check here first when something breaks.**
+* [docs/UPDATING_CONTENT.md](docs/UPDATING_CONTENT.md) — how to swap course PDFs, edit the course outline, tune the tutor prompts, or switch the LLM.
+* [DISCOVERY.md](DISCOVERY.md) — project audit and the local-first migration roadmap (avatar/STT/TTS plans).
+* [CLAUDE.md](CLAUDE.md) — context for Claude Code sessions (commands, constraints).
+* [Frontend/README.md](Frontend/README.md) — frontend-specific setup and notes.
 
 ## Folder Structure
 ```
-/Frontend
-    ├── src/
-    ├── public/
-    ├── .env
+/Frontend                  (Vite + React app)
+    ├── index.html
     ├── package.json
-    └── ... (React app files)
+    ├── .env.example       (VITE_API_URL)
+    └── src/
+        ├── App.jsx        (layout: header / course sidebar / chat)
+        ├── api.js         (backend client: chat, health check)
+        ├── course.js      (hardcoded course modules & sections)
+        ├── hooks/         (useChat, useCourse)
+        └── components/    (Header, CourseNav, ChatPanel, AvatarBanner,
+                            MessageList, InputBar)
 
 /RAG
     ├── __init__.py
     ├── rag.py
     ├── embedding.py
     ├── pdfprocess.py
+    ├── ingest.py
     ├── config.yaml
     └── ... (Python backend files)
 ```
-## Setup Instructures
+## Setup Instructions
 
 **Backend (Python in RAG)**
 
 1. **Install dependencies**
-    * Dependencies are managed using [Poetry] (https://python-poetry.org/docs/#installation)
-    * In directory where pyproject.toml is located, run:
-    `poetry install`
-    * To activate virtual environment, run:
-    `poetry shell`
+    * A conda environment spec is provided: `conda env create -f environment.yml` (env name `digital-human`)
 
-2. **Configure environment**
-    * Place a .env file in the project root
-    * Set any required environmental variables (API Keys)
+2. **Configure YAML**
+    * Edit `RAG/config.yaml` to set model names, chunk sizes, and other parameters
+    * Requires Ollama running at http://localhost:11434 with the configured models pulled (LLM `llama3.1:70b`, embeddings `nomic-embed-text`)
 
-3. **Configure YAML**
-    * Edit config.yaml to set model names, chunk sizes, and other parameters
+3. **Embed course material**
+    ```
+    conda run -n digital-human --cwd <project root> python RAG/ingest.py
+    ```
 
-4. **Run the backend**
-    * Start with
-    `poetry run python __init__.py`
+4. **Run the backend** (from the project root — config paths are CWD-relative)
+    ```
+    conda run -n digital-human --cwd <project root> python RAG/__init__.py
+    ```
+    * Serves http://localhost:5000/v1/chat/completions (OpenAI-compatible)
 
 **Frontend (React in /Frontend)**
 
-1. **Install dependencies**
-```
-cd Frontend
-npm install
+1. **Install Node (no sudo)**
+    ```
+    conda install -n digital-human -c conda-forge "nodejs>=22"
+    ```
+
+2. **Install dependencies and run**
+    ```
+    conda activate digital-human
+    cd Frontend
+    npm install
+    npm run dev
+    ```
+    * App runs on http://localhost:5173
+    * Backend URL is configurable via `VITE_API_URL` (copy `.env.example` to `.env`); defaults to http://localhost:5000. No secrets required.
+
+## Team Access on the DGX
+
+Everyone on the team SSHes into the same machine (`129.79.199.105`), so the app only needs to run **once** for everyone.
+
+**Just using the app:** if the servers are already running, open http://129.79.199.105:5173/ in your browser. Nothing to install or run.
+
+**Starting (or restarting) the servers** — run them in a shared tmux session so they survive SSH disconnects:
+
+```bash
+tmux new -s digital-human    # or: tmux attach -t digital-human  (if it exists)
+
+# window 1 — backend:
+cd /home/hope-intern04/digital-human
+conda activate digital-human
+python RAG/__init__.py
+
+# Ctrl+B then C to open a second window — frontend:
+cd /home/hope-intern04/digital-human/Frontend
+conda activate digital-human
+npm run dev
+
+# Ctrl+B then D to detach; servers keep running
 ```
 
-2. **Configure environment**
-    * Place a .env file in /Frontend (same level as package.json)
-    * Add HeyGen API key:
+Notes for teammates:
 
-3. **Run the frontend**
-`npm start`
-    * App runs on http://localhost:3000
+* The project lives at `/home/hope-intern04/digital-human` (world-writable so everyone can edit).
+* The `digital-human` conda env belongs to hope-intern04. If `conda activate digital-human` doesn't work from your account, call its Python directly: `/home/hope-intern04/miniconda3/envs/digital-human/bin/python`.
+* If git complains about "dubious ownership", run once: `git config --global --add safe.directory /home/hope-intern04/digital-human`
+* Ports are shared machine-wide: backend on 5000, frontend on 5173 — only one instance of each should run at a time.
+* Ollama must be running on the DGX at http://localhost:11434 with `llama3.1:70b` and `nomic-embed-text` pulled.
 
 ## Key Components
 
 **Backend**
 
-* rag.py: Main orchestration for RAG, embedding, retrieval, and TTS.
+* rag.py: Main orchestration for RAG, embedding, retrieval, and (optional) TTS.
 * embedding.py: Handles document embedding and storage in ChromaDB.
 * pdfprocess.py: Loads and splits PDFs into chunks for embedding.
+* ingest.py: Standalone script that embeds the course PDF into ChromaDB.
 * config.yaml: Central configuration for models, chunking, TTS, etc.
 * __init__.py: Quart API exposing /v1/chat/completions for chat.
 
 **Frontend**
 
-* src/SimpleChatUI.jsx: Main chat interface, handles user input, displays messages, integrates HeyGen avatar and speech-to-text.
-* .env: Stores frontend secrets (HeyGen API key).
-* package.json: Lists dependencies, scripts.
+* src/App.jsx: Layout and wiring — course selection enriches chat queries with the current module/section as teaching context; selecting a section auto-requests a brief intro.
+* src/course.js: The hardcoded course outline (4 modules: Foundations, Beginner, Intermediate, Advanced techniques).
+* src/components/AvatarBanner.jsx: Placeholder slot where a future digital-human avatar mounts (see DISCOVERY.md for the local avatar roadmap).
 
-##
-**Development Notes**
+## Development Notes
 
 * **PDF Embedding:**
-    Run embed_pdf('filename.pdf') in rag.py to process and store new documents.
+    Run `python RAG/ingest.py` from the project root to process and store the course PDF (`RAG/example_data/pe2_staff.pdf`).
 * **LLM Switching:**
-    The backend is set up to use Ollama by default, but can be switched to Gemini by editing the config and code.
-* **TTS:** (Deprecated if using HeyGen)
-    Uses Coqui TTS for local speech synthesis.
-* **HeyGen Avatar:**
-    The frontend uses the HeyGen Streaming Avatar SDK. The API key must be set in /Frontend/.env.
+    The backend uses Ollama by default (`llm.ollama_model` in config.yaml); a Gemini path exists in code but is commented out.
+* **TTS:**
+    Coqui TTS is optional — the backend starts cleanly without it and logs a warning.
+* **Avatar:**
+    Not currently integrated. The old HeyGen prototype was removed; the planned replacement is a locally hosted stack (see DISCOVERY.md).

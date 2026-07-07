@@ -6,7 +6,7 @@ chroma_db:
   collection_name: tcp_redbook
 
 llm:
-  ollama_model: deepseek-r1:14b
+  ollama_model: llama3.1:70b
   gemini_model: gemini-2.5-flash
   # google_api_key: ${GOOGLE_API_KEY}
 

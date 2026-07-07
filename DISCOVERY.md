@@ -1,4 +1,29 @@
-# Project Discovery & Audit v2.0
+# Project Discovery & Audit v3.0
+
+## 0a. Revision v3.0 Summary (2026-07-07): Local-First Milestone Reached
+
+Major changes since v2.0 — several items below in the v2.0 baseline are now **historical**:
+
+- **HeyGen is fully removed.** The old CRA frontend (including `SimpleChatUI.jsx` and the `@heygen/streaming-avatar` dependency) was deleted and replaced with a Vite + React **prompt-engineering course tutor** (course sidebar + chat). There are **no cloud dependencies left** — no HeyGen, no ElevenLabs, no cloud STT/TTS.
+- **STT/TTS are currently absent by design.** v1 of the new frontend is text-only; the Web Speech API mic was not carried over. The Coqui TTS path in the backend is now optional (wrapped in try/except; the backend starts cleanly without it).
+- **Avatar**: a placeholder slot exists at `Frontend/src/components/AvatarBanner.jsx` — a future local avatar (NVIDIA ACE / LivePortrait per section 4) mounts as its children with no layout changes.
+- **LLM stack modernized**: langchain 1.x with an LCEL chain (`retriever → prompt → ChatOllama → parser`) replacing the removed `RetrievalQA`; model is now `llama3.1:70b` (was deepseek-r1/qwen3).
+- **Env/secret blockers resolved**: no secrets are required anywhere. The only frontend variable is optional `VITE_API_URL` (documented in `Frontend/.env.example`); the browser reaches the backend via the Vite `/v1` proxy.
+- **Setup docs completed**: see the root `README.md` (setup + team access on the shared DGX), `docs/ARCHITECTURE.md`, `docs/TROUBLESHOOTING.md`, and `docs/UPDATING_CONTENT.md`. PDF ingestion is now a documented script (`RAG/ingest.py`, course PDF `RAG/example_data/pe2_staff.pdf`, ChromaDB collection `tcp_redbook`).
+
+Updated section 4 status:
+
+| Component | Current State (v3.0) | Planned Local Replacement |
+|---|---|---|
+| STT | None (text-only v1; browser STT removed with old frontend) | OpenAI Whisper (hosted on DGX) |
+| TTS | None active (optional Coqui path in backend) | NVIDIA Riva |
+| Lip-Sync / Avatar | Placeholder slot in `AvatarBanner.jsx` (HeyGen removed) | NVIDIA ACE or LivePortrait (DGX-hosted) |
+
+> The v2.0 content below is preserved as the historical baseline. Where it names `SimpleChatUI.jsx`, HeyGen, ElevenLabs, `RetrievalQA`, or missing `.env`/setup docs, treat those as resolved/removed per this summary.
+
+---
+
+# (Historical) Project Discovery & Audit v2.0
 
 ## 0. Revision Summary: What Changed Since the Baseline
 This revision refreshes the original audit without changing its core baseline. The original discovery documented a prototype that was still cloud-dependent in its avatar and speech layers, with a RAG backend powered by Ollama and ChromaDB.

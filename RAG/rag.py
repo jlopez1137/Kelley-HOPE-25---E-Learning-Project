@@ -4,11 +4,11 @@ posthog.disabled = True
 
 from pdfprocess import PDFProcessor
 from embedding import EmbeddingHandler
-from langchain_ollama import OllamaEmbeddings
-from langchain_community.llms import Ollama
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_chroma import Chroma
-from langchain.chains import RetrievalQA
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableLambda
 import os
 import logging
 
@@ -43,24 +43,40 @@ def serve_rag():
         return
     
     # ToDo: Add switch for different LLMs
-    llm = Ollama(model = CONFIG['llm']['ollama_model'])
-    
+    llm = ChatOllama(model = CONFIG['llm']['ollama_model'])
+
     # Utilizing Gemini API
     # llm = ChatGoogleGenerativeAI(
     #     model = os.getenv('GEMINI_MODEL'),
     #     google_api_key = os.getenv('GOOGLE_API_KEY'),
     #     temperature = 0
     # )
-    
-    logger.info('Creating RetrievalQA chain. . .')
-    qa_chain = RetrievalQA.from_chain_type(
-        llm = llm,
-        chain_type = CONFIG['retrieval_qa']['chain_type'],
-        retriever = vectorstore.as_retriever(search_kwargs={'k': CONFIG['retrieval_qa']['retrieve_k']}),
-        return_source_documents = True
+
+    logger.info('Creating RAG chain. . .')
+    retriever = vectorstore.as_retriever(search_kwargs={'k': CONFIG['retrieval_qa']['retrieve_k']})
+
+    prompt = ChatPromptTemplate.from_template(
+        'Answer the question based only on the following context. '
+        'If the context does not contain the answer, say so.\n\n'
+        'Context:\n{context}\n\n'
+        'Question: {question}'
     )
-    
-    return qa_chain
+
+    answer_chain = prompt | llm | StrOutputParser()
+
+    def format_docs(docs):
+        return '\n\n'.join(doc.page_content for doc in docs)
+
+    def answer_query(query: str):
+        source_documents = retriever.invoke(query)
+        result = answer_chain.invoke({
+            'context': format_docs(source_documents),
+            'question': query,
+        })
+        return {'result': result, 'source_documents': source_documents}
+
+    # RunnableLambda keeps the .invoke(query) interface used by run_rag()
+    return RunnableLambda(answer_query)
 
 def embed_pdf(title):
     
@@ -102,30 +118,40 @@ def embed_pdf(title):
     embedding_handler.embed_documents(chunks)
     
     
-from TTS.api import TTS
-
 # Load TTS model on import
 # DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-coqui_tts = TTS(CONFIG['tts']['model'], progress_bar=False)
+try:
+    from TTS.api import TTS
+    coqui_tts = TTS(CONFIG['tts']['model'], progress_bar=False)
+except Exception as e:
+    coqui_tts = None
+    logging.getLogger(__name__).warning(f'Coqui TTS unavailable, TTS features disabled: {e}')
 
 def tts(text: str):
+    if coqui_tts is None:
+        logging.getLogger(__name__).warning('Coqui TTS is not installed; skipping TTS playback.')
+        return None
+
     import soundfile as sf
     import sounddevice as sd
-    
+
     # Removes <think> </think> from LLM output
     # Only necessary for Thinking Models like Qwen3 and Deepseek-r1
     if '<think>' in text:
         text = text.split('</think>')[1]
-        
+
     # Generate audio
     wav = coqui_tts.tts(text)
-    
+
     sd.play(wav, samplerate = 22050)
     sd.wait()
 
 async def tts_async(text: str):
     import asyncio
     ''' Run TTS in background'''
+    if coqui_tts is None:
+        logging.getLogger(__name__).warning('Coqui TTS is not installed; skipping TTS playback.')
+        return None
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, tts, text)
     
