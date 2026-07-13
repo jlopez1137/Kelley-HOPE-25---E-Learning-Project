@@ -9,6 +9,7 @@ This project is a Retrieval-Augmented Generation (RAG) e-learning system with a 
 
 ## Documentation
 
+* [docs/SETUP.md](docs/SETUP.md) — **start here**: copy-paste commands to get both servers running from any teammate's account.
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how everything fits together: data flow from browser to Ollama/ChromaDB, component map, API contract, config sources.
 * [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — symptom → fix for every failure we've hit (connection refused, empty vector store, wrong env, slow responses, …). **Check here first when something breaks.**
 * [docs/UPDATING_CONTENT.md](docs/UPDATING_CONTENT.md) — how to swap course PDFs, edit the course outline, tune the tutor prompts, or switch the LLM.

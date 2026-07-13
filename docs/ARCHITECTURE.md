@@ -15,16 +15,16 @@ How a question travels from a student's browser to an answer.
                             ▼
  ┌─────────────────────────────┐
  │ Quart backend  :5000        │  RAG/__init__.py
- │  POST /v1/chat/completions  │  OpenAI-compatible, non-streaming
- │  → run_rag(query)           │
+ │  POST /v1/chat/completions  │  OpenAI-compatible; non-streaming by
+ │  → run_rag(query)           │  default, SSE with "stream": true
  └──────────────┬──────────────┘
                 ▼
  ┌─────────────────────────────┐
- │ RAG chain (LCEL)            │  RAG/rag.py — serve_rag()
- │  retriever (k=10)           │
+ │ RAG chain (LCEL)            │  RAG/rag.py — serve_rag(),
+ │  retriever (k=5)            │  built ONCE at startup and reused
  │   → prompt template         │
- │   → ChatOllama llama3.1:70b │
- │   → StrOutputParser         │
+ │   → ChatOllama llama3.1:70b │  (keep_alive 30m, num_predict 512,
+ │   → StrOutputParser         │   num_ctx 4096, temperature 0.2)
  └───────┬─────────────┬───────┘
          ▼             ▼
  ┌──────────────┐ ┌──────────────────┐
@@ -66,8 +66,8 @@ Two prompt templates, both in the frontend (the backend is course-agnostic):
 
 | Piece | File | Role |
 |---|---|---|
-| HTTP API | `__init__.py` | Quart app; mimics OpenAI's chat-completions endpoint. Extracts the **last user message** only and calls `run_rag()`. |
-| RAG chain | `rag.py` | `serve_rag()` builds the LCEL chain (retrieve → stuff context into prompt → ChatOllama → parse). `embed_pdf()` handles ingestion. TTS (Coqui) is optional — starts cleanly without it. |
+| HTTP API | `__init__.py` | Quart app; mimics OpenAI's chat-completions endpoint. Extracts the **last user message** only and calls `run_rag()` via `asyncio.to_thread` (the event loop stays free during inference, so health probes answer instantly). A `before_serving` warmup builds the chain and pre-loads the model in the background at startup. `"stream": true` switches to SSE. |
+| RAG chain | `rag.py` | `serve_rag()` builds the LCEL chain (retrieve → stuff context into prompt → ChatOllama → parse); `get_qa_chain()` caches it as a singleton — it is built **once** and reused by every request. Each request logs a `RAG timing:` line splitting retrieval vs generation time. `embed_pdf()` handles ingestion. TTS (Coqui) is optional — starts cleanly without it. |
 | Embedding | `embedding.py` | Chunk-by-chunk embedding via `ollama.embed` with skip-if-exists dedup. |
 | PDF chunking | `pdfprocess.py` | PyMuPDF load + recursive splitting (chunk 800 / overlap 150). PDFs live in `RAG/example_data/`. |
 | Ingestion CLI | `ingest.py` | Standalone script: embeds the course PDF, prints progress and final count. |
@@ -77,16 +77,24 @@ Two prompt templates, both in the frontend (the backend is course-agnostic):
 `POST /v1/chat/completions` — request: `{"model": "...", "messages": [{"role": "user", "content": "..."}]}`.
 Response: OpenAI shape; the answer is at `choices[0].message.content`. Errors: `{"error": "..."}` with HTTP 400/500.
 
+**Opt-in streaming** (additive; the default non-streaming shape above is unchanged): add `"stream": true` to the request body and the backend responds with `text/event-stream` SSE — OpenAI-style `chat.completion.chunk` objects (text deltas in `choices[0].delta.content`, then a `finish_reason: "stop"` chunk, then `data: [DONE]`). The frontend does not use this yet.
+
 Frontend-side handling (`Frontend/src/api.js`):
 - `<think>…</think>` blocks are stripped from answers (thinking-model artifacts).
-- Client timeout is **120 s** (`TIMEOUT_MS`) — llama3.1:70b normally takes 30–60 s.
-- **Health probe**: the backend has no health route, so the header pill POSTs an empty body every 15 s; the backend's cheap 400 "No data provided" path proves it's alive without invoking the LLM.
+- Client timeout is **120 s** (`TIMEOUT_MS`) — with the model warm, answers typically take **15–25 s** (see Performance below).
+- **Health probe**: the backend has no health route, so the header pill POSTs an empty body every 15 s; the backend's cheap 400 path proves it's alive without invoking the LLM. Since inference runs off the event loop, the probe stays fast even mid-generation.
+
+## Performance
+
+- **Warm requests** (model already loaded): ~15–25 s total, split roughly retrieval 0.5–4 s / generation the rest — each request logs `RAG timing: retrieval Xs, generation Ys` so you can see the split.
+- **Cold start**: loading llama3.1:70b (~43 GB) takes 20–30 s. The backend pre-warms at startup (`before_serving`), and `keep_alive: 30m` keeps the model in GPU memory between requests, so users only hit a cold load after 30+ minutes of idle.
+- Answers are capped at 512 tokens (`num_predict`) — intentional for concise course Q&A; raise it in `RAG/config.yaml` if answers get cut off.
 
 ## Configuration
 
 | Source | Controls |
 |---|---|
-| `RAG/config.yaml` | LLM model, embedding model, chunk size/overlap, retrieval k, Chroma directory + collection name |
+| `RAG/config.yaml` | LLM model + generation options (`keep_alive`, `num_predict`, `num_ctx`, `temperature`), embedding model, chunk size/overlap, retrieval k (currently 5), Chroma directory + collection name |
 | `Frontend/.env.example` → `.env` | `VITE_API_URL` (default empty = same-origin via the Vite proxy) |
 | `Frontend/vite.config.js` | Network binding (`host: true`) and the `/v1` proxy target |
 

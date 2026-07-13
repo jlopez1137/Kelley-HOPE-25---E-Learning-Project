@@ -26,9 +26,9 @@ conda run -n digital-human --cwd /home/hope-intern04/digital-human/Frontend npm 
 
 ## Constraints & gotchas
 
-- Backend API contract is OpenAI-style `POST /v1/chat/completions` (non-streaming). The frontend depends on this shape — don't change it.
+- Backend API contract is OpenAI-style `POST /v1/chat/completions`. The default non-streaming response shape must not change — the frontend depends on it. SSE streaming is available **opt-in** via `"stream": true` (OpenAI `chat.completion.chunk` format); the frontend doesn't use it yet.
 - The browser reaches the backend through the **Vite `/v1` proxy** (`Frontend/vite.config.js`); the backend stays bound to 127.0.0.1. Don't hardcode `localhost:5000` in frontend code — use `VITE_API_URL`/same-origin via `Frontend/src/config.js`.
-- LLM responses take 30–60 s (llama3.1:70b). Client timeout is 120 s (`TIMEOUT_MS` in `Frontend/src/api.js`).
+- LLM responses take ~15–25 s warm (llama3.1:70b). The RAG chain is a startup-built singleton (`get_qa_chain()` in `RAG/rag.py`) and the backend pre-warms the model; `keep_alive: 30m` + `num_predict`/`num_ctx`/`temperature` live in `RAG/config.yaml`. Inference runs via `asyncio.to_thread` — don't call `run_rag()` directly on the event loop. Each request logs `RAG timing: retrieval Xs, generation Ys`. Client timeout is 120 s (`TIMEOUT_MS` in `Frontend/src/api.js`).
 - Coqui TTS and HeyGen were deliberately removed/optional — do not reinstall Coqui or reintroduce HeyGen. The future avatar mounts as children of `Frontend/src/components/AvatarBanner.jsx`.
 - Course outline is hardcoded in `Frontend/src/course.js`; tutor prompt templates live in `Frontend/src/App.jsx` and `Frontend/src/hooks/useChat.js` (see `docs/UPDATING_CONTENT.md`).
 - No test suite. Verify changes by running both servers and exercising the chat (see `docs/TROUBLESHOOTING.md` for known failure modes).

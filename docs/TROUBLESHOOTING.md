@@ -7,6 +7,7 @@ Real problems this project has hit, with fixes. Commands assume you're SSH'ed in
 ```bash
 ss -tlnp | grep -E '5000|5173'    # are the backend (5000) and frontend (5173) running?
 ollama list                        # are llama3.1:70b and nomic-embed-text pulled?
+ollama ps                          # is llama3.1:70b loaded in GPU memory? (should stay ~30 min after last use)
 ```
 
 ---
@@ -46,7 +47,22 @@ Ollama isn't running or the models aren't pulled.
 
 ### Responses are slow
 
-Normal. llama3.1:70b typically takes **30–60 seconds** per answer; the UI shows "Thinking… Ns" while it works and gives up at 120 s (constant `TIMEOUT_MS` in `Frontend/src/api.js`). If you consistently hit the timeout, check GPU load (`nvidia-smi`) — someone else may be using the card.
+With the model warm, llama3.1:70b typically takes **15–25 seconds** per answer; the UI shows "Thinking… Ns" while it works and gives up at 120 s (constant `TIMEOUT_MS` in `Frontend/src/api.js`).
+
+Diagnose where the time goes: the backend logs `RAG timing: retrieval Xs, generation Ys` for every request. If generation dominates and is much slower than usual, check GPU load (`nvidia-smi`) — someone else may be using the card. If *every* request is slow, check the model is actually staying loaded (next entry).
+
+### First request is much slower than the rest (cold start)
+
+Loading llama3.1:70b (~43 GB) into GPU memory takes 20–30 s. Two mechanisms normally hide this:
+
+- the backend **pre-warms at startup** (`before_serving` in `RAG/__init__.py`) — the chain is built and the model loaded before the first user request;
+- `keep_alive: 30m` in `RAG/config.yaml` keeps the model resident between requests.
+
+So a cold hit should only happen if the backend just started (warmup still in flight) or nobody asked anything for 30+ minutes. Verify residency with `ollama ps` — it should list llama3.1:70b with an expiry ~30 min out. If teammates need the GPU memory back sooner, lower `keep_alive`; if you're demoing all day, raise it.
+
+### Answers get cut off mid-sentence (truncation)
+
+Generation is capped at **512 tokens** (`num_predict` in `RAG/config.yaml`) to keep course Q&A answers concise and fast. If answers are visibly truncated, raise `num_predict` (e.g. 1024) and restart the backend. Also check `num_ctx` (4096): if you increase `retrieve_k` or chunk size, the context window must still fit retrieved chunks + question + answer.
 
 ### "Address already in use" when starting a server
 

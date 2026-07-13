@@ -8,8 +8,8 @@ from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_chroma import Chroma
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnableLambda
 import os
+import time
 import logging
 
 import yaml
@@ -37,13 +37,20 @@ def serve_rag():
         collection_name = CONFIG['chroma_db']['collection_name'],
     )
     
-    logger.warning(f'Number of documents in database: {vectorstore._collection.count()}')
-    if vectorstore._collection.count() == 0:
+    doc_count = vectorstore._collection.count()
+    logger.warning(f'Number of documents in database: {doc_count}')
+    if doc_count == 0:
         logger.error('No documents found in the vector store. Please ensure embeddings are processed and stored.')
         return
-    
+
     # ToDo: Add switch for different LLMs
-    llm = ChatOllama(model = CONFIG['llm']['ollama_model'])
+    llm = ChatOllama(
+        model = CONFIG['llm']['ollama_model'],
+        keep_alive = CONFIG['llm'].get('keep_alive', '30m'),
+        num_predict = CONFIG['llm'].get('num_predict', 512),
+        num_ctx = CONFIG['llm'].get('num_ctx', 4096),
+        temperature = CONFIG['llm'].get('temperature', 0.2),
+    )
 
     # Utilizing Gemini API
     # llm = ChatGoogleGenerativeAI(
@@ -68,15 +75,48 @@ def serve_rag():
         return '\n\n'.join(doc.page_content for doc in docs)
 
     def answer_query(query: str):
+        t0 = time.perf_counter()
         source_documents = retriever.invoke(query)
+        t1 = time.perf_counter()
         result = answer_chain.invoke({
             'context': format_docs(source_documents),
             'question': query,
         })
+        t2 = time.perf_counter()
+        logger.info(f'RAG timing: retrieval {t1 - t0:.2f}s, generation {t2 - t1:.2f}s, total {t2 - t0:.2f}s')
         return {'result': result, 'source_documents': source_documents}
 
-    # RunnableLambda keeps the .invoke(query) interface used by run_rag()
-    return RunnableLambda(answer_query)
+    def stream_query(query: str):
+        t0 = time.perf_counter()
+        source_documents = retriever.invoke(query)
+        t1 = time.perf_counter()
+        first_token_at = None
+        for delta in answer_chain.stream({
+            'context': format_docs(source_documents),
+            'question': query,
+        }):
+            if first_token_at is None:
+                first_token_at = time.perf_counter()
+            yield delta
+        t2 = time.perf_counter()
+        ttft = (first_token_at or t2) - t1
+        logger.info(f'RAG timing (stream): retrieval {t1 - t0:.2f}s, first token {ttft:.2f}s, generation {t2 - t1:.2f}s, total {t2 - t0:.2f}s')
+
+    return _RAGRunner(answer_query, stream_query)
+
+
+class _RAGRunner:
+    """Keeps the .invoke(query) interface used by run_rag(), plus .stream(query) for SSE."""
+
+    def __init__(self, answer_query, stream_query):
+        self._answer_query = answer_query
+        self._stream_query = stream_query
+
+    def invoke(self, query: str):
+        return self._answer_query(query)
+
+    def stream(self, query: str):
+        return self._stream_query(query)
 
 def embed_pdf(title):
     
@@ -155,10 +195,23 @@ async def tts_async(text: str):
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, tts, text)
     
+# The chain (embeddings client, Chroma handle, LLM client) is expensive to build,
+# so it is created once and shared by all requests.
+_qa_chain = None
+
+def get_qa_chain():
+    global _qa_chain
+    if _qa_chain is None:
+        _qa_chain = serve_rag()
+    return _qa_chain
+
 def run_rag(query: str):
-    qa_chain = serve_rag()
-    return qa_chain.invoke(query)
-    
+    return get_qa_chain().invoke(query)
+
+def run_rag_stream(query: str):
+    """Yield answer text deltas for the query (used by the SSE streaming path)."""
+    return get_qa_chain().stream(query)
+
 if __name__ == '__main__':
     
     import warnings
