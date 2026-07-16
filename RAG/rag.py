@@ -212,6 +212,27 @@ def run_rag_stream(query: str):
     """Yield answer text deltas for the query (used by the SSE streaming path)."""
     return get_qa_chain().stream(query)
 
+# Whisper model is expensive to load, so it is created once (on first use, not
+# on import) and shared by all requests.
+_whisper_model = None
+
+def get_whisper_model():
+    global _whisper_model
+    if _whisper_model is None:
+        from faster_whisper import WhisperModel
+        _whisper_model = WhisperModel(
+            CONFIG['stt']['model'],
+            device = CONFIG['stt']['device'],
+            compute_type = CONFIG['stt']['compute_type'],
+        )
+    return _whisper_model
+
+def transcribe(audio_bytes: bytes) -> str:
+    """Transcribe raw audio bytes (any ffmpeg-readable format) to text."""
+    import io
+    segments, _info = get_whisper_model().transcribe(io.BytesIO(audio_bytes))
+    return ''.join(segment.text for segment in segments).strip()
+
 if __name__ == '__main__':
     
     import warnings

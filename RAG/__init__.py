@@ -1,6 +1,6 @@
 from quart import Quart, request, jsonify, Response
 from quart_cors import cors
-from rag import run_rag, run_rag_stream, get_qa_chain, tts, tts_async, CONFIG
+from rag import run_rag, run_rag_stream, get_qa_chain, tts, tts_async, transcribe, CONFIG
 import time, uuid, os, json, asyncio, logging
 from dotenv import load_dotenv
 
@@ -141,6 +141,26 @@ async def stream_completion(prompt_input: str, model: str):
         content_type = 'text/event-stream',
         headers = {'Cache-Control': 'no-cache', 'Connection': 'keep-alive'},
     )
+
+
+# Mimic OpenAI audio transcription endpoint
+@app.route('/v1/audio/transcriptions', methods=['POST'])
+async def audio_transcriptions():
+    try:
+        files = await request.files
+        audio_file = files.get('file')
+        if not audio_file:
+            return jsonify({'error': 'No audio file provided'}), 400
+
+        audio_bytes = audio_file.read()
+
+        # Transcription is CPU/GPU-bound — run it off the event loop like run_rag
+        text = await asyncio.to_thread(transcribe, audio_bytes)
+
+        return jsonify({'text': text}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

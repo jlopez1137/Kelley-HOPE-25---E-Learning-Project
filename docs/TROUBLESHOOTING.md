@@ -85,6 +85,16 @@ The repo belongs to hope-intern04 and you're a different user.
 git config --global --add safe.directory /home/hope-intern04/digital-human
 ```
 
+### Mic button does nothing / "Recording needs HTTPS or localhost"
+
+Browsers only allow microphone access (`getUserMedia`/`MediaRecorder`) on **secure contexts**: `https://` origins, or `http://localhost`/`127.0.0.1`. Opening the app at `http://129.79.199.105:5173/` is plain HTTP on a non-localhost address, so `navigator.mediaDevices` doesn't exist and the mic button fails silently (as of this fix, it now shows a red error message under the input bar instead).
+
+**Fix:** SSH tunnel so the page is served to your browser as `localhost`:
+```bash
+ssh -L 5173:localhost:5173 -L 5000:localhost:5000 <user>@129.79.199.105
+```
+then open `http://localhost:5173/` (not the `129.79.199.105` address) in your **local** browser. Chat and other features work fine either way — this only matters for the mic.
+
 ### Frontend build/dev fails with "node: command not found"
 
 Node lives inside the conda env, not system-wide.

@@ -336,12 +336,22 @@
 }
 
 /* ── Input bar ─────────────────────────────────────────── */
+.input-bar-wrap {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.input-bar__mic-error {
+  padding: 0.5rem 1.25rem 0;
+  color: #e03131;
+  font-size: 0.85rem;
+}
+
 .input-bar {
   display: flex;
   gap: 0.6rem;
   padding: 0.9rem 1.25rem;
   background: var(--surface);
-  border-top: 1px solid var(--border);
 }
 
 .input-bar__textarea {
@@ -369,6 +379,27 @@
 }
 
 .input-bar__send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.input-bar__mic {
+  padding: 0 1rem;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.input-bar__mic--recording {
+  background: #e03131;
+  color: #fff;
+  border-color: #e03131;
+}
+
+.input-bar__mic:disabled {
   opacity: 0.5;
   cursor: default;
 }

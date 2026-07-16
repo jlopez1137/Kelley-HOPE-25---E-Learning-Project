@@ -20,7 +20,8 @@ dependencies = [
     "coqui-tts (>=0.27.0,<0.28.0)",
     "sounddevice (>=0.5.2,<0.6.0)",
     "quart (>=0.20.0,<0.21.0)",
-    "quart-cors (>=0.8.0,<0.9.0)"
+    "quart-cors (>=0.8.0,<0.9.0)",
+    "faster-whisper (>=1.1.0,<2.0.0)"
 ]
 
 

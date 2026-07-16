@@ -25,3 +25,8 @@ retrieval_qa:
 tts:
   model: tts_models/en/ljspeech/fast_pitch
   sample_rate: 22050
+
+stt:
+  model: base.en
+  device: cpu
+  compute_type: int8

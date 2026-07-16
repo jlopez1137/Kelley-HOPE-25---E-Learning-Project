@@ -1,4 +1,4 @@
-import { API_URL, CHAT_ENDPOINT, MODEL } from './config';
+import { API_URL, CHAT_ENDPOINT, TRANSCRIBE_ENDPOINT, MODEL } from './config';
 
 const TIMEOUT_MS = 120_000;
 
@@ -39,6 +39,38 @@ export async function sendChat(messages) {
     throw new Error('Backend returned an empty response.');
   }
   return stripThink(content);
+}
+
+export async function transcribeAudio(blob) {
+  const form = new FormData();
+  form.append('file', blob, 'recording.webm');
+
+  let res;
+  try {
+    res = await fetch(TRANSCRIBE_ENDPOINT, {
+      method: 'POST',
+      body: form,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+      throw new Error('Transcription timed out after 2 minutes.');
+    }
+    throw new Error(`Cannot reach the backend at ${API_URL || 'localhost:5000 (via proxy)'} — is it running?`);
+  }
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    // non-JSON body; fall through to status-based error
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.error || `Backend returned HTTP ${res.status}`);
+  }
+
+  return data?.text ?? '';
 }
 
 // The backend has no dedicated health route, so probe the chat endpoint with an
