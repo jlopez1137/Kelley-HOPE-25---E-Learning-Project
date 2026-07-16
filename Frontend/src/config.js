@@ -3,5 +3,6 @@
 export const API_URL = import.meta.env.VITE_API_URL || '';
 export const CHAT_ENDPOINT = `${API_URL}/v1/chat/completions`;
 export const TRANSCRIBE_ENDPOINT = `${API_URL}/v1/audio/transcriptions`;
+export const SPEECH_ENDPOINT = `${API_URL}/v1/audio/speech`;
 export const API_LABEL = API_URL || 'backend via proxy';
 export const MODEL = 'llama3.1:70b';

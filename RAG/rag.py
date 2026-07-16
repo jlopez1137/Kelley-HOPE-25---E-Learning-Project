@@ -162,7 +162,7 @@ def embed_pdf(title):
 # DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 try:
     from TTS.api import TTS
-    coqui_tts = TTS(CONFIG['tts']['model'], progress_bar=False)
+    coqui_tts = TTS(CONFIG['tts']['coqui']['model'], progress_bar=False)
 except Exception as e:
     coqui_tts = None
     logging.getLogger(__name__).warning(f'Coqui TTS unavailable, TTS features disabled: {e}')
@@ -232,6 +232,47 @@ def transcribe(audio_bytes: bytes) -> str:
     import io
     segments, _info = get_whisper_model().transcribe(io.BytesIO(audio_bytes))
     return ''.join(segment.text for segment in segments).strip()
+
+# Piper voice is expensive to load (and its model file must be downloaded on
+# first use), so — like Whisper above — it's created once on first use, not
+# on import, and shared by all requests.
+_piper_voice = None
+
+def get_piper_voice():
+    global _piper_voice
+    if _piper_voice is None:
+        from pathlib import Path
+        from piper import PiperVoice
+        from piper.download_voices import download_voice
+
+        piper_config = CONFIG['tts']['piper']
+        model_dir = Path(piper_config['model_dir'])
+        model_dir.mkdir(parents=True, exist_ok=True)
+
+        voice_name = piper_config['model']
+        model_path = model_dir / f'{voice_name}.onnx'
+        if not model_path.exists():
+            logging.getLogger(__name__).info(f'Downloading Piper voice {voice_name}. . .')
+            download_voice(voice_name, model_dir)
+
+        _piper_voice = PiperVoice.load(str(model_path))
+    return _piper_voice
+
+def synthesize_speech(text: str) -> str:
+    """Synthesize text to speech, writing a WAV file and returning its path."""
+    import uuid
+    import wave
+    from pathlib import Path
+
+    output_dir = Path(CONFIG['tts']['piper']['output_dir'])
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f'{uuid.uuid4().hex}.wav'
+
+    voice = get_piper_voice()
+    with wave.open(str(output_path), 'wb') as wav_file:
+        voice.synthesize_wav(text, wav_file)
+
+    return str(output_path)
 
 if __name__ == '__main__':
     

@@ -23,8 +23,15 @@ retrieval_qa:
   retrieve_k: 5
 
 tts:
-  model: tts_models/en/ljspeech/fast_pitch
-  sample_rate: 22050
+  provider: piper
+  piper:
+    model: en_US-lessac-medium
+    model_dir: RAG/tts_models
+    output_dir: RAG/tts_output
+    sample_rate: 22050
+  coqui:
+    model: tts_models/en/ljspeech/fast_pitch
+    sample_rate: 22050
 
 stt:
   model: base.en

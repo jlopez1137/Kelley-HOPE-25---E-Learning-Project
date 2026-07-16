@@ -15,9 +15,11 @@ Updated section 4 status:
 
 | Component | Current State (v3.0) | Planned Local Replacement |
 |---|---|---|
-| STT | None (text-only v1; browser STT removed with old frontend) | OpenAI Whisper (hosted on DGX) |
-| TTS | None active (optional Coqui path in backend) | NVIDIA Riva |
+| STT | faster-whisper, local on DGX (`POST /v1/audio/transcriptions`) — see below | Done |
+| TTS | Piper, local on DGX (`POST /v1/audio/speech`) with a click-to-play 🔊 button per assistant chat bubble — see below | Done for backend + frontend; avatar/lip-sync wiring pending |
 | Lip-Sync / Avatar | Placeholder slot in `AvatarBanner.jsx` (HeyGen removed) | NVIDIA ACE or LivePortrait (DGX-hosted) |
+
+**Update (this revision):** STT and TTS both landed as local, DGX-hosted services — not the originally planned OpenAI Whisper / NVIDIA Riva. STT uses `faster-whisper` (CPU, `int8`, mirrors this section's existing local-first spirit at a fraction of Riva's operational complexity); TTS uses `Piper` (CPU, ONNX voices) instead of NVIDIA Riva, chosen for the same reason — a pip-installable, no-server-to-run local engine, since Riva needs a full Triton/Riva server deployment that isn't justified yet on a shared dev box. See `docs/PIPER_TTS_NOTES.md` for the TTS implementation log and `docs/TROUBLESHOOTING.md` for setup/testing of both.
 
 > The v2.0 content below is preserved as the historical baseline. Where it names `SimpleChatUI.jsx`, HeyGen, ElevenLabs, `RetrievalQA`, or missing `.env`/setup docs, treat those as resolved/removed per this summary.
 

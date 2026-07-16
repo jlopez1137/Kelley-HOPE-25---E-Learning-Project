@@ -1,6 +1,6 @@
 from quart import Quart, request, jsonify, Response
 from quart_cors import cors
-from rag import run_rag, run_rag_stream, get_qa_chain, tts, tts_async, transcribe, CONFIG
+from rag import run_rag, run_rag_stream, get_qa_chain, tts, tts_async, transcribe, synthesize_speech, CONFIG
 import time, uuid, os, json, asyncio, logging
 from dotenv import load_dotenv
 
@@ -158,6 +158,27 @@ async def audio_transcriptions():
         text = await asyncio.to_thread(transcribe, audio_bytes)
 
         return jsonify({'text': text}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Text-to-speech endpoint: given text, returns a WAV file of the spoken audio
+@app.route('/v1/audio/speech', methods=['POST'])
+async def audio_speech():
+    try:
+        data = await request.get_json()
+        text = (data or {}).get('text')
+        if not text:
+            return jsonify({'error': 'No text provided'}), 400
+
+        # Synthesis is CPU-bound — run it off the event loop like transcribe/run_rag
+        wav_path = await asyncio.to_thread(synthesize_speech, text)
+
+        with open(wav_path, 'rb') as f:
+            wav_bytes = f.read()
+
+        return Response(wav_bytes, content_type='audio/wav'), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

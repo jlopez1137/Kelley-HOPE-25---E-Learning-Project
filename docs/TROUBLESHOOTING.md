@@ -100,3 +100,29 @@ then open `http://localhost:5173/` (not the `129.79.199.105` address) in your **
 Node lives inside the conda env, not system-wide.
 
 **Fix:** `conda activate digital-human` (or reinstall: `conda install -n digital-human -c conda-forge "nodejs>=22"`).
+
+### Piper TTS (`POST /v1/audio/speech`) setup, testing, and known limitations
+
+**Setup:** `piper-tts` installs cleanly on this aarch64 DGX (prebuilt wheel, no compilation) via:
+```bash
+/home/hope-intern04/miniconda3/envs/digital-human/bin/python -m pip install --user "piper-tts>=1.4.2,<2.0.0"
+```
+(`--user` because, like the other Python deps, this account can't write to the shared conda env's own `site-packages` — see the `ModuleNotFoundError` entry above.) `pyproject.toml` documents the pin.
+
+No manual voice download step is needed — the backend lazy-downloads the configured voice (`tts.piper.model` in `RAG/config.yaml`, default `en_US-lessac-medium`, ~63 MB) into `tts.piper.model_dir` (default `RAG/tts_models/`) on the **first** `/v1/audio/speech` request. Subsequent requests reuse the cached model and voice object (same lazy-singleton pattern as Whisper in `RAG/rag.py`).
+
+**Test command:**
+```bash
+curl -X POST http://127.0.0.1:5000/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Prompt engineering is the practice of designing inputs for AI tools."}' \
+  -o response.wav
+```
+Response is a raw `audio/wav` file (16-bit PCM mono, 22050 Hz). Verify content with `file response.wav`, or round-trip it through `/v1/audio/transcriptions` to sanity-check the words came out right.
+
+**Known limitations:**
+- **CPU-only for now.** `PiperVoice.load(..., use_cuda=False)` — synthesis is fast enough on CPU (~0.1–0.2 s for a sentence) that GPU wasn't needed; revisit if longer passages get used.
+- **`RAG/tts_output/` grows unbounded.** Every request writes a new `<uuid>.wav` file and never deletes it. Fine for smoke testing; needs a cleanup/TTL policy (or switch to streaming bytes without persisting to disk) before real classroom use.
+- **No streaming.** The whole WAV is generated and returned in one response; there's no chunked/streaming audio yet.
+- **Frontend-accessible, but not connected to avatar/lip-sync.** Each assistant chat bubble has a 🔊 play button (`Frontend/src/components/MessageList.jsx`) that calls `/v1/audio/speech` on click and plays the returned audio — it's manual/click-to-play only, never autoplay. It's intentionally not connected to `AvatarBanner.jsx`.
+- **First request per voice is slower** (~3–4 s) due to the one-time model download; cold-start after a backend restart re-downloads only if `RAG/tts_models/` was deleted — otherwise it just re-loads from disk (~0.5 s).

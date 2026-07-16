@@ -1,4 +1,49 @@
 import { useEffect, useRef, useState } from 'react';
+import { synthesizeSpeech } from '../api';
+
+function PlayButton({ text }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const audioRef = useRef(null);
+  const urlRef = useRef(null);
+
+  // Revoke any generated object URL when this bubble unmounts
+  useEffect(() => () => {
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+  }, []);
+
+  const play = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const url = await synthesizeSpeech(text);
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+      urlRef.current = url;
+      if (!audioRef.current) audioRef.current = new Audio();
+      audioRef.current.src = url;
+      await audioRef.current.play();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <span className="bubble__tts">
+      <button
+        type="button"
+        className="bubble__tts-btn"
+        onClick={play}
+        disabled={isLoading}
+        title={error || 'Play audio'}
+      >
+        {isLoading ? '…' : '🔊'}
+      </button>
+      {error && <span className="bubble__tts-error">{error}</span>}
+    </span>
+  );
+}
 
 function ThinkingIndicator() {
   const [elapsed, setElapsed] = useState(0);
@@ -43,6 +88,7 @@ export default function MessageList({ messages, isLoading }) {
         return (
           <div className={`bubble bubble--${msg.role}`} key={msg.id}>
             {msg.role === 'error' ? `Error: ${msg.content}` : msg.content}
+            {msg.role === 'assistant' && <PlayButton text={msg.content} />}
           </div>
         );
       })}

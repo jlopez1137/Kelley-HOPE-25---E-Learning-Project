@@ -1,4 +1,4 @@
-import { API_URL, CHAT_ENDPOINT, TRANSCRIBE_ENDPOINT, MODEL } from './config';
+import { API_URL, CHAT_ENDPOINT, TRANSCRIBE_ENDPOINT, SPEECH_ENDPOINT, MODEL } from './config';
 
 const TIMEOUT_MS = 120_000;
 
@@ -71,6 +71,39 @@ export async function transcribeAudio(blob) {
   }
 
   return data?.text ?? '';
+}
+
+// Returns an object URL for the generated audio; caller is responsible for
+// revoking it (URL.revokeObjectURL) once playback is done.
+export async function synthesizeSpeech(text) {
+  let res;
+  try {
+    res = await fetch(SPEECH_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+      throw new Error('Speech generation timed out after 2 minutes.');
+    }
+    throw new Error(`Cannot reach the backend at ${API_URL || 'localhost:5000 (via proxy)'} — is it running?`);
+  }
+
+  if (!res.ok) {
+    let message = `Backend returned HTTP ${res.status}`;
+    try {
+      const data = await res.json();
+      message = data?.error || message;
+    } catch {
+      // non-JSON error body; fall through to status-based message
+    }
+    throw new Error(message);
+  }
+
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
 }
 
 // The backend has no dedicated health route, so probe the chat endpoint with an

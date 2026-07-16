@@ -270,6 +270,34 @@
   color: var(--error);
 }
 
+.bubble__tts {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.bubble__tts-btn {
+  padding: 0.1rem 0.4rem;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.bubble__tts-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.bubble__tts-error {
+  color: #e03131;
+  font-size: 0.75rem;
+}
+
 .section-divider {
   display: flex;
   align-items: center;

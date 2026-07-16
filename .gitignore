@@ -5,5 +5,9 @@ __pycache__/
 # ChromaDB vector store (regenerate with: python RAG/ingest.py)
 chroma_db/
 
+# Piper TTS: downloaded voice models and generated speech output
+RAG/tts_models/
+RAG/tts_output/
+
 # Environment files
 .env
