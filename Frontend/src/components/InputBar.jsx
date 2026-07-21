@@ -1,6 +1,17 @@
 import { useRef, useState } from 'react';
 import { transcribeAudio } from '../api';
 
+// Composer row: textarea + 🎤 mic (speech-to-text) + Send.
+//
+// Props:
+//   onSend(text)  — called with the raw draft on submit; the parent enriches
+//                   and dispatches it (see App.jsx handleSend)
+//   isLoading     — a chat request is in flight; blocks submit and the mic
+//
+// Mic flow: MediaRecorder buffers audio chunks while recording; on stop they
+// are combined into a single Blob, POSTed to /v1/audio/transcriptions (via
+// transcribeAudio), and the transcript is appended to whatever is already
+// typed — the user reviews and presses Send themselves; nothing auto-submits.
 export default function InputBar({ onSend, isLoading }) {
   const [text, setText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -31,6 +42,10 @@ export default function InputBar({ onSend, isLoading }) {
 
   const startRecording = async () => {
     setMicError(null);
+    // Mic capture requires a secure context: browsers expose
+    // navigator.mediaDevices only on HTTPS or localhost, so on this app's
+    // plain-HTTP IP address it is undefined — the fix is viewing the page
+    // through an SSH tunnel as localhost (see docs/TROUBLESHOOTING.md).
     if (!navigator.mediaDevices?.getUserMedia) {
       setMicError(
         window.isSecureContext

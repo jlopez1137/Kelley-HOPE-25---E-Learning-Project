@@ -48,7 +48,9 @@ export function useChat() {
   const sendIntro = useCallback(
     (moduleTitle, section) => {
       append('divider', `${moduleTitle} · ${section}`);
-      const prompt = `Introduce ${section} to a student who is new to prompt engineering. Keep it brief — 2-3 sentences that set up what they're about to learn.`;
+      // Topic goes first: the backend embeds this whole string as the vector
+      // search query, and leading with instructions drags retrieval off-topic.
+      const prompt = `${section} (${moduleTitle}). Give a 2-3 sentence introduction to this topic for a student who is new to prompt engineering, setting up what they're about to learn. Output only the introduction itself — no preamble or meta-commentary (do not write things like "Here's a possible introduction:" or "Sure, here's..."). Begin directly with the content, as if you were speaking straight to the student.`;
       run([{ role: 'user', content: prompt }]);
     },
     [run]

@@ -30,9 +30,9 @@ Copy `.env.example` to `.env` to override. No secrets are needed.
 
 ## Notes
 
-- **Latency**: the backend runs llama3.1:70b via Ollama — responses can take 30+
-  seconds. The UI shows a thinking indicator with an elapsed-time counter, and the
-  client timeout is 120 s (`TIMEOUT_MS` in `src/api.js`).
+- **Latency**: the backend runs llama3.1:8b via Ollama (previously 70b) — warm
+  responses take ~3 s. The UI shows a thinking indicator with an elapsed-time
+  counter, and the client timeout is 120 s (`TIMEOUT_MS` in `src/api.js`).
 - **Course structure** is hardcoded in `src/course.js` (4 modules of sections).
   Clicking a section marks it complete, updates the progress bar, and auto-requests
   a short intro from the tutor. Questions are sent with the current module/section

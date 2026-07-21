@@ -63,9 +63,14 @@ def serve_rag():
     retriever = vectorstore.as_retriever(search_kwargs={'k': CONFIG['retrieval_qa']['retrieve_k']})
 
     prompt = ChatPromptTemplate.from_template(
-        'Answer the question based only on the following context. '
-        'If the context does not contain the answer, say so.\n\n'
-        'Context:\n{context}\n\n'
+        'You are an encouraging tutor for a prompt-engineering course. '
+        'Answer the student\'s question using the course material below — '
+        'prefer it whenever it is relevant. If the material doesn\'t cover '
+        'the question, answer from your general knowledge of prompt '
+        'engineering instead. You must always give the student a real '
+        'answer: never say you lack information, and never mention '
+        '"context", "documents", or your sources.\n\n'
+        'Course material:\n{context}\n\n'
         'Question: {question}'
     )
 

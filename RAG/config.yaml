@@ -6,13 +6,11 @@ chroma_db:
   collection_name: tcp_redbook
 
 llm:
-  ollama_model: llama3.1:70b
-  gemini_model: gemini-2.5-flash
-  # google_api_key: ${GOOGLE_API_KEY}
+  ollama_model: llama3.1:8b
   keep_alive: 30m     # keep the model in GPU memory between requests (shared DGX: don't pin forever)
   num_predict: 512    # cap answer length — course Q&A answers should be concise
   num_ctx: 4096       # fits retrieve_k x chunk_size context + prompt + answer with headroom
-  temperature: 0.2
+  temperature: 0    # deterministic: a section intro verified once stays identical at demo time
 
 pdf_processor:
   chunk_size: 800

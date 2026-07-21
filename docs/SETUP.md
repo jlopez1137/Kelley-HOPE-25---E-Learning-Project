@@ -26,7 +26,7 @@ tmux ls 2>/dev/null || echo "(none)"
 
 - **Both servers RUNNING** → open <http://129.79.199.105:5173/>. Done.
 - **Something not running** → continue below, starting only what's missing.
-- Ollama must list `llama3.1:70b` and `nomic-embed-text`. It normally always
+- Ollama must list `llama3.1:8b` and `nomic-embed-text`. It normally always
   runs; if it's down, ask before touching it.
 
 ---
@@ -113,8 +113,14 @@ frontend : HTTP 200 (200 = up)
 ```
 
 Then open **<http://129.79.199.105:5173/>** in your browser and send a chat
-message. **The first reply takes 30–60 seconds** — that's normal (the LLM is
-llama3.1:70b). Anything under 2 minutes is fine.
+message. Replies typically take **~3 seconds** once the model is warm (the
+backend pre-loads llama3.1:8b at startup); anything under 2 minutes is fine.
+
+Voice features: the 🔊 button on each answer works from any address. The 🎤
+mic button needs the page served from `localhost` — browsers block microphone
+access on plain-HTTP IP addresses. Use an SSH tunnel
+(`ssh -L 5173:localhost:5173 <user>@129.79.199.105`) and open
+<http://localhost:5173/> instead; details in TROUBLESHOOTING.md.
 
 ---
 

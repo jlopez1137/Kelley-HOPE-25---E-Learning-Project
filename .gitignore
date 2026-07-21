@@ -11,3 +11,9 @@ RAG/tts_output/
 
 # Environment files
 .env
+
+# One-off installer downloads (too large for GitHub)
+Miniconda3-*.sh
+
+# Claude Code personal/local settings
+.claude/settings.local.json

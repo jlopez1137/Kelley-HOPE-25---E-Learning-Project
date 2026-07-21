@@ -6,8 +6,8 @@ Real problems this project has hit, with fixes. Commands assume you're SSH'ed in
 
 ```bash
 ss -tlnp | grep -E '5000|5173'    # are the backend (5000) and frontend (5173) running?
-ollama list                        # are llama3.1:70b and nomic-embed-text pulled?
-ollama ps                          # is llama3.1:70b loaded in GPU memory? (should stay ~30 min after last use)
+ollama list                        # are llama3.1:8b and nomic-embed-text pulled?
+ollama ps                          # is llama3.1:8b loaded in GPU memory? (should stay ~30 min after last use)
 ```
 
 ---
@@ -43,22 +43,22 @@ ChromaDB is empty — the course PDF hasn't been embedded (or `chroma_db/` was d
 
 Ollama isn't running or the models aren't pulled.
 
-**Fix:** `ollama serve` (if not already a service), then verify `ollama list` shows **llama3.1:70b** and **nomic-embed-text**; `ollama pull <model>` for any missing.
+**Fix:** `ollama serve` (if not already a service), then verify `ollama list` shows **llama3.1:8b** and **nomic-embed-text**; `ollama pull <model>` for any missing.
 
 ### Responses are slow
 
-With the model warm, llama3.1:70b typically takes **15–25 seconds** per answer; the UI shows "Thinking… Ns" while it works and gives up at 120 s (constant `TIMEOUT_MS` in `Frontend/src/api.js`).
+With the model warm, llama3.1:8b typically takes **~3 seconds** per answer (the previous llama3.1:70b took 15–25 s); the UI shows "Thinking… Ns" while it works and gives up at 120 s (constant `TIMEOUT_MS` in `Frontend/src/api.js`).
 
 Diagnose where the time goes: the backend logs `RAG timing: retrieval Xs, generation Ys` for every request. If generation dominates and is much slower than usual, check GPU load (`nvidia-smi`) — someone else may be using the card. If *every* request is slow, check the model is actually staying loaded (next entry).
 
 ### First request is much slower than the rest (cold start)
 
-Loading llama3.1:70b (~43 GB) into GPU memory takes 20–30 s. Two mechanisms normally hide this:
+Loading llama3.1:8b (~4.9 GB) into GPU memory takes a few seconds (the previous 70b model was ~43 GB / 20–30 s). Two mechanisms normally hide this:
 
 - the backend **pre-warms at startup** (`before_serving` in `RAG/__init__.py`) — the chain is built and the model loaded before the first user request;
 - `keep_alive: 30m` in `RAG/config.yaml` keeps the model resident between requests.
 
-So a cold hit should only happen if the backend just started (warmup still in flight) or nobody asked anything for 30+ minutes. Verify residency with `ollama ps` — it should list llama3.1:70b with an expiry ~30 min out. If teammates need the GPU memory back sooner, lower `keep_alive`; if you're demoing all day, raise it.
+So a cold hit should only happen if the backend just started (warmup still in flight) or nobody asked anything for 30+ minutes. Verify residency with `ollama ps` — it should list llama3.1:8b with an expiry ~30 min out. If teammates need the GPU memory back sooner, lower `keep_alive`; if you're demoing all day, raise it.
 
 ### Answers get cut off mid-sentence (truncation)
 
