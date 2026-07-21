@@ -1,225 +1,202 @@
+/* Slide-primary layout.
+ *
+ * Two states, driven by .app--panel-open on the shell:
+ *   default: .stage is 100% wide; only the crimson agent toggle floats over it
+ *   open:    .stage 68%, .agent-panel slides in from the right at 32%
+ * Both movements share one 250ms transition so they read as a single motion.
+ *
+ * Palette (per the v3 design): stage background #0a0a0a, panel #141414,
+ * IU Crimson #990000 for the toggle/active accents/section label. The chat
+ * components (MessageList/InputBar — KEEP files) style themselves from the
+ * CSS variables in index.css; .agent-panel re-declares those variables so the
+ * panel gets the v3 palette without touching index.css or the components.
+ * No border heavier than 1px anywhere — the slide is the star. */
+
 /* ── Shell ─────────────────────────────────────────────── */
 .app {
-  display: flex;
-  flex-direction: column;
+  position: relative;
   height: 100%;
-}
-
-.app__body {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}
-
-/* ── Header ────────────────────────────────────────────── */
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1.25rem;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-
-.header__title {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-  padding: 0.3rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-}
-
-.status__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--muted);
-}
-
-.status--connected .status__dot {
-  background: var(--success);
-}
-
-.status--disconnected .status__dot {
-  background: var(--error);
-}
-
-.status--disconnected {
-  color: var(--error);
-  border-color: var(--error);
-}
-
-/* ── Course navigation sidebar ─────────────────────────── */
-.course-nav {
-  display: flex;
-  flex-direction: column;
-  width: 25%;
-  min-width: 240px;
-  max-width: 340px;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-}
-
-.course-nav__modules {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0.5rem;
-}
-
-.module__header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.6rem 0.5rem;
-  background: none;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  text-align: left;
-}
-
-.module__header:hover {
-  background: var(--surface-2);
-}
-
-.module__chevron {
-  display: inline-block;
-  transition: transform 0.15s ease;
-  color: var(--muted);
-}
-
-.module__chevron--open {
-  transform: rotate(90deg);
-}
-
-.module__sections {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 0.25rem 0;
-}
-
-.section {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.45rem 0.5rem 0.45rem 1.9rem;
-  background: none;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  color: var(--muted);
-  text-align: left;
-}
-
-.section:hover {
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-.section--active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.section__check {
-  color: var(--success);
-  flex-shrink: 0;
-}
-
-.course-nav__footer {
-  padding: 0.9rem;
-  border-top: 1px solid var(--border);
-}
-
-.progress__track {
-  height: 6px;
-  background: var(--surface-2);
-  border-radius: 999px;
   overflow: hidden;
+  background: #0a0a0a;
 }
 
-.progress__fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 999px;
-  transition: width 0.3s ease;
-}
-
-.progress__label {
-  display: block;
-  margin-top: 0.35rem;
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
-.course-nav__buttons {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-}
-
-.nav-btn {
-  flex: 1;
-  padding: 0.45rem 0;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.85rem;
-}
-
-.nav-btn:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.nav-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-/* ── Chat panel ────────────────────────────────────────── */
-.chat-panel {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-}
-
-.avatar-banner {
+/* ── Slide stage ───────────────────────────────────────── */
+.stage {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  transition: width 250ms ease;
 }
 
-.avatar-banner--placeholder {
-  color: var(--muted);
+.app--panel-open .stage {
+  width: 68%;
+}
+
+.stage__canvas {
+  display: block;
+  /* Rendered size is set by SlideStage (fit + devicePixelRatio); this only
+   * guards against overflow during the width transition. */
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.stage__error {
+  position: absolute; /* overlays the canvas, which stays mounted for recovery */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 70%;
+  color: #8b91a0;
+  font-size: 0.95rem;
+  padding: 0.6rem 1rem;
+  text-align: center;
+  background: rgba(10, 10, 10, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+/* Prev/next arrows — quiet until hovered; the slide stays the focus. */
+.stage__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(10, 10, 10, 0.6);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 1.6rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms, border-color 150ms;
+}
+
+.stage__arrow--prev { left: 1rem; }
+.stage__arrow--next { right: 1rem; }
+
+.stage__arrow:hover:not(:disabled) {
+  background: rgba(153, 0, 0, 0.85); /* IU Crimson on hover */
+  border-color: #990000;
+  color: #fff;
+}
+
+.stage__arrow:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.stage__counter {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.55);
   font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  background: rgba(10, 10, 10, 0.6);
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.avatar-banner__icon {
-  width: 20px;
-  height: 20px;
-  opacity: 0.7;
+/* ── Agent toggle (persistent, bottom right) ───────────── */
+.agent-toggle {
+  position: fixed;
+  right: 1.4rem;
+  bottom: 1.4rem;
+  z-index: 30; /* above the panel so it doubles as its dismiss */
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: 50%;
+  background: #990000; /* IU Crimson */
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  /* `right` animates at the panel's 250ms so the button rides its edge. */
+  transition: transform 150ms, background 150ms, right 250ms ease;
 }
+
+/* Panel open: move to the panel's left edge instead of covering its Send
+ * button — still bottom-right of the slide stage, always fully visible. */
+.agent-toggle--open {
+  right: calc(32% + 1.4rem);
+}
+
+.agent-toggle svg {
+  width: 24px;
+  height: 24px;
+}
+
+.agent-toggle:hover {
+  background: #b31212;
+  transform: scale(1.06);
+}
+
+/* ── Agent panel ───────────────────────────────────────── */
+.agent-panel {
+  /* v3 palette for the KEEP chat components, which read these variables
+   * (declared app-wide in index.css) for their own styling. */
+  --surface: #141414;
+  --surface-2: #1f1f1f;
+  --border: #2a2a2a;
+  --text: #e6e8ee;
+  --muted: #8b91a0;
+  --accent: #990000;
+  --accent-soft: rgba(153, 0, 0, 0.18);
+  --error: #e5534b;
+  --error-soft: rgba(229, 83, 75, 0.12);
+
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 32%;
+  display: flex;
+  flex-direction: column;
+  background: #141414;
+  border-left: 1px solid #2a2a2a;
+  color: var(--text);
+  transform: translateX(100%); /* parked off-screen when closed */
+  transition: transform 250ms ease;
+  z-index: 20;
+}
+
+.agent-panel--open {
+  transform: translateX(0);
+}
+
+/* Current course position — module in muted caps, section in IU Crimson. */
+.agent-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.agent-panel__module {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.agent-panel__topic {
+  color: #cc2b2b; /* crimson, lightened a step for contrast on #141414 */
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* ── Chat components (KEEP files: MessageList.jsx, InputBar.jsx) ──
+ * Class names below are their existing contract — do not rename. */
 
 .message-list {
   flex: 1;
@@ -228,13 +205,14 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  padding: 1.25rem;
+  padding: 1rem;
 }
 
 .empty-state {
   margin: auto;
   text-align: center;
   color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .empty-state p {
@@ -242,11 +220,12 @@
 }
 
 .bubble {
-  max-width: 72%;
-  padding: 0.65rem 0.95rem;
+  max-width: 88%;
+  padding: 0.6rem 0.85rem;
   border-radius: 14px;
   white-space: pre-wrap;
   overflow-wrap: break-word;
+  font-size: 0.92rem;
 }
 
 .bubble--user {
@@ -258,7 +237,7 @@
 
 .bubble--assistant {
   align-self: flex-start;
-  background: var(--surface);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-bottom-left-radius: 4px;
 }
@@ -270,6 +249,28 @@
   color: var(--error);
 }
 
+/* Divider role: no longer produced by this shell (the visible slide is the
+ * context marker) but MessageList can still render it — keep it presentable. */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+/* Per-answer 🔊 TTS button (MessageList → PlayButton) */
 .bubble__tts {
   display: inline-flex;
   align-items: center;
@@ -294,27 +295,8 @@
 }
 
 .bubble__tts-error {
-  color: #e03131;
+  color: var(--error);
   font-size: 0.75rem;
-}
-
-.section-divider {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 0.5rem 0;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.section-divider::before,
-.section-divider::after {
-  content: '';
-  flex: 1;
-  border-top: 1px solid var(--border);
 }
 
 /* Thinking indicator */
@@ -342,55 +324,42 @@
   animation: pulse 1.2s ease-in-out infinite;
 }
 
-.dots span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.dots span:nth-child(3) {
-  animation-delay: 0.4s;
-}
+.dots span:nth-child(2) { animation-delay: 0.2s; }
+.dots span:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes pulse {
-  0%,
-  60%,
-  100% {
-    opacity: 0.3;
-    transform: translateY(0);
-  }
-  30% {
-    opacity: 1;
-    transform: translateY(-3px);
-  }
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30%           { opacity: 1;   transform: translateY(-3px); }
 }
 
-/* ── Input bar ─────────────────────────────────────────── */
+/* Input bar (InputBar.jsx: textarea + 🎤 mic + Send) */
 .input-bar-wrap {
   background: var(--surface);
   border-top: 1px solid var(--border);
 }
 
 .input-bar__mic-error {
-  padding: 0.5rem 1.25rem 0;
-  color: #e03131;
-  font-size: 0.85rem;
+  padding: 0.5rem 1.1rem 0;
+  color: var(--error);
+  font-size: 0.8rem;
 }
 
 .input-bar {
   display: flex;
-  gap: 0.6rem;
-  padding: 0.9rem 1.25rem;
-  background: var(--surface);
+  gap: 0.5rem;
+  padding: 0.8rem 1.1rem;
 }
 
 .input-bar__textarea {
   flex: 1;
   resize: none;
-  padding: 0.6rem 0.85rem;
+  padding: 0.55rem 0.8rem;
   background: var(--surface-2);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 10px;
   outline: none;
+  font-size: 0.92rem;
 }
 
 .input-bar__textarea:focus {
@@ -398,7 +367,7 @@
 }
 
 .input-bar__send {
-  padding: 0 1.4rem;
+  padding: 0 1.2rem;
   background: var(--accent);
   color: #fff;
   border: none;
@@ -412,37 +381,22 @@
 }
 
 .input-bar__mic {
-  padding: 0 1rem;
+  padding: 0 0.85rem;
   background: var(--surface-2);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 10px;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   line-height: 1;
 }
 
 .input-bar__mic--recording {
-  background: #e03131;
+  background: var(--accent);
   color: #fff;
-  border-color: #e03131;
+  border-color: var(--accent);
 }
 
 .input-bar__mic:disabled {
   opacity: 0.5;
   cursor: default;
-}
-
-/* ── Narrow screens: sidebar stacks above chat ─────────── */
-@media (max-width: 720px) {
-  .app__body {
-    flex-direction: column;
-  }
-
-  .course-nav {
-    width: 100%;
-    max-width: none;
-    max-height: 40%;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
 }
